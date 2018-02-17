@@ -67,7 +67,7 @@ class Malicious:
         await ctx.message.delete()
         if embed_perms(ctx.message):
             try:
-                await ctx.message.channel.send(content=None, embed=discord.Embed().set_image(url="https://discordemoji.com/assets/emoji/{}.png".format(name)))
+                await ctx.message.channel.send(content=None, embed=discord.Embed().set_image(url=f"https://discordemoji.com/assets/emoji/{name}.png"))
             except:
                 return
 
