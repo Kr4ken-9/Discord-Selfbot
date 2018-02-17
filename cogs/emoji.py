@@ -163,6 +163,5 @@ class Emoji:
         else:
             await ctx.send(self.bot.bot_prefix + "Successfully removed {} emoji with the name {}.".format(emote_length, name))
 
-
 def setup(bot):
     bot.add_cog(Emoji(bot))
