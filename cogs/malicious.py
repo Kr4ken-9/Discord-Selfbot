@@ -1,5 +1,7 @@
 from discord.ext import commands
 from cogs.utils.checks import embed_perms
+from urllib.request import Request, urlopen
+import json
 import discord
 
 '''Module for miscellaneous commands'''
@@ -8,6 +10,19 @@ import discord
 class Malicious:
     def __init__(self, bot):
         self.bot = bot
+        self.emojis = []
+        self.update_emojis()
+
+    def update_emojis(self):
+        try:
+            request = Request('https://discordemoji.com/api', headers={'User-Agent': 'Mozilla/5.0'})
+            data = urlopen(request).read()
+            self.emojis = json.loads(data)
+        except:
+            print('Failed to make a request to discordemoji.')
+            return
+        
+        print('Successfully updated emojis!')
 
     @commands.command(pass_context=True)
     async def hubbub(self, ctx):
@@ -65,11 +80,19 @@ class Malicious:
     async def de(self, ctx, name):
         """Embeds an image from discordemoji.com"""
         await ctx.message.delete()
-        if embed_perms(ctx.message):
+
+        emoji = next((x for x in self.emojis if x['title'] == name), None)
+
+        if embed_perms(ctx.message) and emoji:
             try:
-                await ctx.message.channel.send(content=None, embed=discord.Embed().set_image(url=f"https://discordemoji.com/assets/emoji/{name}.png"))
+                await ctx.message.channel.send(content=None, embed=discord.Embed().set_image(url=f"https://discordemoji.com/assets/emoji/{emoji['slug']}.png"))
             except:
                 return
+    
+    @commands.command(pass_context=True)
+    async def update_de(self):
+        """Updates cached emojilist"""
+        self.update_emojis()
 
 def setup(bot):
     bot.add_cog(Malicious(bot))
