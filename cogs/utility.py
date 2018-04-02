@@ -12,7 +12,6 @@ import glob
 import git
 import io
 from PIL import Image
-from PythonGists import PythonGists
 from discord.ext import commands
 from cogs.utils.checks import *
 from bs4 import BeautifulSoup
@@ -294,27 +293,23 @@ class Utility:
         except:
             await ctx.send(self.bot.bot_prefix + 'Could not encrypt spoiler.')
 
-    @commands.group(pass_context=True)
-    async def gist(self, ctx):
-        """Posts to gist"""
+    @commands.group(pass_context=True, aliases=['hastebin'], invoke_without_command=True)
+    async def hb(self, ctx, *, msg):
+        """Posts to Hastebin"""
         if ctx.invoked_subcommand is None:
             pre = cmd_prefix_len()
-            url = PythonGists.Gist(
-                description='Created in channel: {} in server: {}'.format(ctx.message.channel, ctx.message.guild),
-                content=ctx.message.content[4 + pre:].strip(), name='Output')
-            await ctx.send(self.bot.bot_prefix + 'Gist output: ' + url)
+            url = await hastebin(msg)
+            await ctx.send(self.bot.bot_prefix + 'Hastebin output: ' + url)
             await ctx.message.delete()
 
-    @gist.command(pass_context=True)
+    @hb.command(pass_context=True)
     async def file(self, ctx, *, msg):
-        """Create gist of file"""
+        """Create Hastebin of file"""
         try:
             with open(msg) as fp:
                 output = fp.read()
-                url = PythonGists.Gist(
-                    description='Created in channel: {} in server: {}'.format(ctx.message.channel, ctx.message.guild),
-                    content=output, name=msg.replace('/', '.'))
-                await ctx.send(self.bot.bot_prefix + 'Gist output: ' + url)
+                url = await hastebin(output)
+                await ctx.send(self.bot.bot_prefix + 'Hastebin output: ' + url)
         except:
             await ctx.send(self.bot.bot_prefix + 'File not found.')
         finally:
@@ -551,30 +546,19 @@ class Utility:
             await ctx.send("", embed=embed)
 
     @commands.command(pass_context=True)
-    async def hastebin(self, ctx, *, data):
-        """Post to Hastebin."""
-        await ctx.message.delete()
-        async with self.session.post("https://hastebin.com/documents", data=data) as resp:
-            post = await resp.text()
-        try:
-            await ctx.send(self.bot.bot_prefix + "Succesfully posted to Hastebin:\nhttps://hastebin.com/{}.txt".format(json.loads(post)["key"]))
-        except json.JSONDecodeError:
-            await ctx.send(self.bot.bot_prefix + "Failed to post to Hastebin. The API may be down right now.")
-
-    @commands.command(pass_context=True)
     async def whoisplaying(self, ctx, *, game):
         """Check how many people are playing a certain game."""
         msg = ""
         for guild in self.bot.guilds:
             for user in guild.members:
-                if user.game is not None:
-                    if user.game.name is not None:
-                        if user.game.name.lower() == game.lower():
+                if user.activity is not None:
+                    if user.activity.name is not None:
+                        if user.activity.name.lower() == game.lower():
                             msg += "{}#{}\n".format(user.name, user.discriminator)
         msg = "\n".join(set(msg.split("\n")))  # remove dupes
         if len(msg) > 1500:
-            gist = PythonGists.Gist(description="Number of people playing {}".format(game), content=msg, name="Output")
-            await ctx.send("{}Large output posted to Gist: {}".format(self.bot.bot_prefix, gist))
+            hastebin_output = await hastebin(msg)
+            await ctx.send("{}Large output posted to Hastebin: {}".format(self.bot.bot_prefix, hastebin_output))
         elif len(msg) == 0:
             await ctx.send(self.bot.bot_prefix + "Nobody is playing that game!")
         else:
@@ -812,26 +796,33 @@ class Utility:
         else:
             try:
                 os.system('clear')
-            except:
+            except Exception:
                 for _ in range(100):
                     print()
 
-        print('Logged in as')
+        message = 'Logged in as %s.' % self.bot.user
+        uid_message = 'User id: %s.' % self.bot.user.id
+        separator = '-' * max(len(message), len(uid_message))
+        print(separator)
         try:
-            print(self.bot.user.name)
-        except:
-            pass
-        print('User id: ' + str(self.bot.user.id))
-        print('------')
+            print(message)
+        except: # some bot usernames with special chars fail on shitty platforms
+            print(message.encode(errors='replace').decode())
+        print(uid_message)
+        print(separator)
         await ctx.send(self.bot.bot_prefix + 'Console cleared successfully.')
         
-    @commands.command(aliases=['ra'])
-    async def readall(self, ctx, msg: str = None):
-        """Marks everything as read. Append `server` to your message to only clear the current server."""
+    @commands.command()
+    async def read(self, ctx, id: int=None):
+        """Marks a specified server as read. If an ID is not provided, all servers will be marked as read."""
         await ctx.message.delete()
-        if msg == "server":
-            await ctx.guild.ack()
-            await ctx.send(self.bot.bot_prefix + "Marked current guild as read.")
+        if id:
+            guild = self.bot.get_guild(int(id))
+            if guild:
+                await guild.ack()
+                await ctx.send(self.bot.bot_prefix + "Marked {} as read.".format(guild.name))
+            else:
+                await ctx.send(self.bot.bot_prefix + "Invalid server ID.")
         else:
             for guild in self.bot.guilds:
                 await guild.ack()
