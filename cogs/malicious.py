@@ -4,7 +4,7 @@ from urllib.request import Request, urlopen
 import json
 import discord
 
-'''Module for miscellaneous commands'''
+'''Module for malicious commands'''
 
 
 class Malicious:
@@ -60,6 +60,12 @@ class Malicious:
 
         message = await ctx.send(mention)
         await message.delete()
+
+    @commands.command(pass_context=True)
+    async def gay(self, ctx):
+        """Rainbow gayify"""
+        await ctx.message.delete()
+        await ctx.send("@someone" + ('\n' * 1991) + "\u2800")
 
     @commands.command(pass_context=True)
     async def large(self, ctx):
